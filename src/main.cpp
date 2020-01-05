@@ -25,6 +25,14 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
+
+void GLAPIENTRY debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar* message, const void* userParam) {
+    fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+        (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+        type, severity, message);
+}
+
 /* // Test code for boundaries
 if (tempTopRight.x + offX > 1) {
     offX -= tempTopRight.x + offX - 1;
@@ -75,10 +83,10 @@ void checkBoundaries(glm::vec4 &tempTopRight, glm::vec4 &tempBottomLeft, float o
 int main()
 {
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
+
     GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
@@ -97,20 +105,10 @@ int main()
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(debugCallback, 0);
+    
 
-    // Triangles with differently colored vertexes
-    float triangleVertices[] = {
-    -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-     0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-    };
-
-    // Triangles without color values
-    /*float triangleVertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f,
-    };*/
 
     float rectangleVertices[] = {
      1.0f,  1.0f, 0.0f,  // top right
@@ -123,31 +121,20 @@ int main()
         1, 2, 3    // second triangle
     };
 
-    int nrOfDots = 1000;
+    int nrOfDots = 999;
     float* dots;
     dots = new float[1000];
-    //float dots[100000];
+    dots[0] = 999;
 
-    // Around 100000 randomly placed dots
-    /*
-    for (int i = 0; i < nrOFDots - 2; i = i + 3) {
-        dots[i] = (float)rand() / RAND_MAX;
-        dots[i + 1] = (float)rand() / RAND_MAX;
-        dots[i + 2] = (rand() % 3) + 1; // 3 colors
-        if (rand() % 2 == 0) {
-            dots[i] = -dots[i];
-        }
-        if (rand() % 2 == 0) {
-            dots[i+1] = -dots[i+1];
-        }
-    }
-    */
-
-    // Dots of each set placed in certain areas to test fragnent shader color management
-    for (int i = 0; i < (nrOfDots - 2); i = i + 3) {
-        if (i < (nrOfDots / 3)) {
+    // Dots of each set placed in certain areas to test fragment shader color management
+    for (int i = 1; i < (nrOfDots - 1); i = i + 3) {
+        if (i < (nrOfDots / 6)) {
             dots[i] = -(float)rand() / RAND_MAX;
             dots[i + 1] = -(float)rand() / RAND_MAX;
+            dots[i + 2] = 1; // First set is placed at lower left quadrant
+        } else if (i < (nrOfDots / 3)) {
+            dots[i] = (-(float)rand() / RAND_MAX) + 0.5;
+            dots[i + 1] = (-(float)rand() / RAND_MAX) + 0.5;
             dots[i + 2] = 1; // First set is placed at lower left quadrant
         }
         else if (i < (2 * nrOfDots / 3)) {
@@ -187,53 +174,39 @@ int main()
     glGenVertexArrays(1, &VAO2);
     glBindVertexArray(VAO2);
 
-    // Triangle on the canvas
-    /*
-    unsigned int VBO2;
-    glGenBuffers(1, &VBO2);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-    */
-
     // Dots on the canvas
     unsigned int VBO2;
     glGenBuffers(1, &VBO2);
     glBindBuffer(GL_ARRAY_BUFFER, VBO2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float)* 1000, dots, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(1 * sizeof(float)));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-
-    /*
-     GLuint ssbo;
-    glGenBuffers(1, &ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float)*1000, dots, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    */
    
+    Shader ourShader("shader_v.vs", "shader_f.fs");
+    Shader computeShader("shader_c.cshader");
+
     // Shader Storage Object to iterate all vertexes when deciding color in fragment shader
-    
-    float data[] = {1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0};
     GLuint ssbo;
     glGenBuffers(1, &ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(data), data, GL_DYNAMIC_COPY);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 1000, dots, GL_STATIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    
-    
 
-    Shader ourShader("shader_v.vs", "shader_f.fs");
-   // int vertexColorLocation;
+    GLuint ssbo2;
+    glGenBuffers(1, &ssbo2);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo2);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 800 * 600, NULL, GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo2);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
+    glBindVertexArray(0);
+
+    float ssboArray[100];
+    //unsigned char pixelData[4];
     int height, width;
     double xPos, yPos;
     double prevX, prevY;
@@ -247,25 +220,19 @@ int main()
     {
         processInput(window);
         glfwGetWindowSize(window, &width, &height);
-
         ourShader.use();
         ourShader.setVec3("color", 1.0f, 1.0f, 1.0f);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
         ourShader.setMat4("trans", trans);
-
         glfwGetCursorPos(window, &xPos, &yPos); // Cannot be before shader calls for some reason
-
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        /*glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-        GLvoid* p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-        memcpy(p, &data, sizeof(data));
-        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);*/
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
         ourShader.setVec3("color", 0.0f, 0.0f, 0.0f);
         glBindVertexArray(VAO2);
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
-        glDrawArrays(GL_POINTS, 0, 900);
+        glDrawArrays(GL_POINTS, 0, nrOfDots / 3);
         // Pan view here if mouse coordinates change
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
             if (firstClick) {
@@ -283,7 +250,6 @@ int main()
                     glm::vec4 tempTopRight = trans * topRightCorner;
                     glm::vec4 tempBottomLeft = trans * bottomLeftCorner;
                     checkBoundaries(tempTopRight, tempBottomLeft, offX, offY, trans);
-                   
                 }
                 glfwGetCursorPos(window, &prevX, &prevY);
             }
@@ -305,11 +271,22 @@ int main()
             trans = glm::mat4(1.0f); // Center view if fully zoomed out
         }
         currentZoom = zoom;
-        
         glBindVertexArray(0);
+        
+        computeShader.use();
 
+        glDispatchCompute(width, height, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo2);
+        float *tryy = (float*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 100, GL_MAP_READ_BIT);
+        memcpy(&ssboArray, tryy, sizeof(float) * 100);
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        //glReadPixels(0, 0, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pixelData);
+        //std::cout << (int)pixelData[0] << std::endl;
     }
     glfwTerminate();
     return 0;
